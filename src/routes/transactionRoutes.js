@@ -1,17 +1,14 @@
 import express from "express";
+import protect from "../middlewares/authmiddleware.js";
 import {
-  addTransactions,
-  getTransactions,
-  getSummaries,
-  deleteTransactions,
-} from "../controller/transactionController.js";
-import auth from "../middleware/authMiddleware.js";
+  getHistory,
+  getHistoryById,
+} from "../controllers/transactionController.js";
 
-const routes = express.Router();
+const route = express.Router();
 
-routes.post("/", auth, addTransactions);
-routes.get("/", auth, getTransactions);
-routes.get("/summaries", auth, getSummaries);
-routes.delete("/delete/:id", auth, deleteTransactions);
+route.get("/transaction/history", protect, getHistory);
 
-export default routes;
+route.get("/transaction/history/:id", protect, getHistoryById);
+
+export default route;

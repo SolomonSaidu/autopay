@@ -41,3 +41,44 @@ CREATE TABLE budgets (
 ALTER TABLE users
 ADD COLUMN password_hash TEXT NOT 
 NULL;
+
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE payments (
+  id SERIAL PRIMARY KEY,
+  amount DECIMAL(10, 2) NOT NULL,
+  scheduled_date TIMESTAMP NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled')),
+  receiver_name VARCHAR(255) NOT NULL,
+  receiver_account VARCHAR(20) NOT NULL,
+  description VARCHAR(255),
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+);
+
+
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE users ADD COLUMN balance DECIMAL(15, 2) DEFAULT 0.00;
+
+
+CREATE TABLE transactions (
+  id SERIAL PRIMARY KEY, 
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  amount DECIMAL(15, 2) NOT NULL,
+  type VARCHAR(10) CHECK (type IN ('credit', 'debit')),
+  category VARCHAR(50), -- e.g. 'wallet_funding', 'payment_deduction'
+  reference_id INTEGER, -- links to payments table
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+

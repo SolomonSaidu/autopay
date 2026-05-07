@@ -1,29 +1,28 @@
 import express from "express";
-import db from "./db/postgres.js";
-import authRoutes from "./routes/authRoutes.js";
-import transactionRoutes from "./routes/transactionRoutes.js";
-import categoriesRoutes from "./routes/categoryRoutes.js";
-import budgetRoutes from "./routes/budgetRoutes.js";
-import reportRoutes from "./routes/reportRoutes.js";
-import env from "dotenv";
-env.config();
+import dotenv from "dotenv";
+import usersRoute from "./routes/usersRoutes.js";
+import paymentRoute from "./routes/paymentRoutes.js";
+import errorHandler from "./middlewares/errorMiddleware.js";
+import fundWallet from "./routes/fundWalletRoutes.js";
+import transactionRoute from "./routes/transactionRoutes.js";
+import startPaymentScheduler from "./schedule/paymentScheduler.js";
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(express.json());
+app.use("/api", usersRoute);
+app.use("/api", paymentRoute);
+app.use("/api", fundWallet);
+app.use("/api", transactionRoute);
+startPaymentScheduler();
+app.use(errorHandler);
 
-// Routes //
-app.use("/api", authRoutes);
-app.use("/api/transactions", transactionRoutes);
-app.use("/api/categories", categoriesRoutes);
-app.use("/api/budgets", budgetRoutes);
-app.use("/api", reportRoutes);
-
-app.get("/", (req, res) => {
-  res.send("Server 3000 Active");
+app.get("/api", (req, res) => {
+  res.json({ msg: "Server runnig" });
 });
 
+let PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-  console.log("Server Running on port:", PORT);
+  console.log("Server running on", PORT);
 });
