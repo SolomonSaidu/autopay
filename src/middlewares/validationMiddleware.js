@@ -9,7 +9,7 @@ const validatePayment = (req, res, next) => {
       "any.required": "Amount is required",
     }),
     scheduled_date: Joi.date().greater("now").required().messages({
-      "date.greater": "Schedule date must be in the feature",
+      // "date.greater": "Schedule date must be in the feature",
       "any.required": "Schedule date is required",
     }),
     status: Joi.string()

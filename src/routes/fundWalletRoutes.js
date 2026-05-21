@@ -1,10 +1,15 @@
 import express from "express";
 import protect from "../middlewares/authmiddleware.js";
-import { validateAmount } from "../middlewares/validationMiddleware.js";
-import { fundWallet } from "../controllers/fundWalletController.js";
+// import { validateAmount } from "../middlewares/validationMiddleware.js";
+import {
+  initializePayment,
+  verifyAccountNumber,
+} from "../controllers/fundWalletController.js";
 
-const route = express.Router();
+const router = express.Router();
+// ADD THE STUFF YOU REMOVED
+router.post("/init-topup", protect, initializePayment);
 
-route.post("/top-up", protect, validateAmount, fundWallet);
+router.post("/verify-account", protect, verifyAccountNumber);
 
-export default route;
+export default router;

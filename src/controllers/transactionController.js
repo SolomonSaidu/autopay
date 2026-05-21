@@ -5,10 +5,17 @@ const getHistory = async (req, res) => {
 
   try {
     const transactionHistory = await pool.query(
-      `SELECT t.id AS transaction_id,
-         t.amount, t.type, t.category, t.created_at, p.status AS payment_status FROM
-         transactions t LEFT JOIN payments p ON t.reference_id = p.id WHERE t.user_id = $1
-         ORDER BY t.created_at DESC`,
+      `SELECT 
+    t.id, 
+    t.amount, 
+    t.type, 
+    t.category, 
+    t.gateway_reference, -- Fixed here
+    t.status, 
+    t.created_at 
+  FROM transactions t 
+  WHERE t.user_id = $1
+  ORDER BY t.created_at DESC`,
       [id]
     );
 

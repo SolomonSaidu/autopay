@@ -1,35 +1,39 @@
 import pool from "../config.js/db.js";
+import { initPayment } from "../utils/paystack.js";
+import { resolveAccountNumber } from "../utils/paystack.js";
 
-const fundWallet = async (req, res) => {
-  const { amount, type, category } = req.body;
-  const { id } = req.users;
+const initializePayment = async (req, res) => {
+  const { email, amount } = req.body;
 
-  const addTransaction = await pool.query(
-    `INSERT INTO transactions (user_id, amount, type, category) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [id, amount, type, category]
-  );
+  try {
+    const result = await initPayment(email, amount);
 
-  if (addTransaction.rows[0].length === 0) {
-    res.status(500);
-    throw new Error("Transaction cannot be added, server error");
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.log(error.message);
+
+    res.status(400).json({
+      success: false,
+      msg: "Faild to initialize payment...",
+    });
   }
-
-  const updateBalance = await pool.query(
-    `UPDATE users SET balance = balance + $1 WHERE id = $2 RETURNING balance`,
-    [amount, id]
-  );
-
-  const transaction = addTransaction.rows[0];
-  res.status(201).json({
-    success: true,
-    data: {
-      status: "success",
-      amount: transaction.amount,
-      type: transaction.type,
-      category: transaction.category,
-      balance: updateBalance.rows[0],
-    },
-  });
 };
 
-export { fundWallet };
+const verifyAccountNumber = async (req, res) => {
+  const { accountNumber, bankCode } = req.body;
+
+  try {
+    const accountData = await resolveAccountNumber(accountNumber, bankCode);
+    res.json({ success: true, data: accountData });
+  } catch (error) {
+    console.log(error.message);
+    res
+      .status(500)
+      .json({ success: false, msg: "Faild to get account details..." });
+  }
+};
+
+export { initializePayment, verifyAccountNumber };

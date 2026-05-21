@@ -62,6 +62,25 @@ CREATE TABLE payments (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
 );
 
+-- NEW  payments --
+
+CREATE TABLE payments (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  amount DECIMAL(15, 2) NOT NULL, -- Increased precision for large amounts
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
+  recipient_name VARCHAR(255) NOT NULL,
+  recipient_account VARCHAR(20) NOT NULL,
+  recipient_bank_code VARCHAR(10) NOT NULL, -- e.g., '011' for First Bank
+  paystack_recipient_code VARCHAR(100), -- The 'RCP_xxxx' from our handshake
+  scheduled_date TIMESTAMP NOT NULL,
+  last_run_at TIMESTAMP, -- Track exactly when the scheduler last tried this
+  frequency VARCHAR(20) DEFAULT 'once', -- Allows for recurring payments later
+  description VARCHAR(255),
+  failure_reason TEXT, -- Stores why a payment failed (e.g., "Insufficient Funds")
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+);
+
 
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
@@ -82,3 +101,43 @@ CREATE TABLE transactions (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 
+  -- NEW --
+
+  CREATE TABLE transactions (
+  id SERIAL PRIMARY KEY, 
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  amount DECIMAL(15, 2) NOT NULL,
+  
+  -- 'credit' (money in) or 'debit' (money out)
+  type VARCHAR(10) CHECK (type IN ('credit', 'debit')),
+  
+  -- Detailed categories for clear history
+  category VARCHAR(50), -- 'wallet_funding', 'autopay_payout', 'referral_bonus'
+  
+  -- Internal Link: Connects to your 'payments' table ID (Integer)
+  payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
+  
+  -- External Link: The alphanumeric string from Paystack (String)
+  gateway_reference VARCHAR(100) UNIQUE,
+  
+  -- The final status of the transaction
+  status VARCHAR(20) DEFAULT 'success' CHECK (status IN ('success', 'failed', 'reversed')),
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+   ALTER TABLE transactions ADD COLUMN gateway_reference VARCHAR(100) UNIQUE;
+
+
+CREATE TABLE transactions (
+  id SERIAL PRIMARY KEY, 
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  amount DECIMAL(15, 2) NOT NULL,
+  type VARCHAR(10) CHECK (type IN ('credit', 'debit')),
+  category VARCHAR(50), 
+  payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
+  gateway_reference VARCHAR(100) UNIQUE,
+  status VARCHAR(20) DEFAULT 'success' CHECK (status IN ('success', 'failed', 'reversed')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE transactions ADD COLUMN gateway_reference VARCHAR(100) UNIQUE;

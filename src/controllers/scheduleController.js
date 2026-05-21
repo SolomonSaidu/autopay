@@ -1,23 +1,20 @@
 import pool from "../config.js/db.js";
+import { paystackService } from "../utils/paystack.js";
 
 const createSchedule = async (req, res) => {
-  const client = await pool.connect();
+  const user_id = req.users.id;
+  const {
+    amount,
+    recipientName,
+    accountNumber,
+    bankCode,
+    scheduledDate,
+    description,
+  } = req.body;
 
   try {
-    await client.query(`BEGIN`);
-
-    const user_id = req.users.id;
-    const {
-      amount,
-      scheduled_date,
-      status,
-      receiver_name,
-      receiver_account,
-      description,
-    } = req.body;
-
     // GET USERS BALANCE
-    const userBalance = await client.query(
+    const userBalance = await pool.query(
       `SELECT balance FROM users WHERE id = $1`,
       [user_id] //
     );
@@ -27,54 +24,44 @@ const createSchedule = async (req, res) => {
       throw new Error("Insufficient funds");
     }
 
-    //UPDATE USERS BALANCE
-    await client.query(
-      `UPDATE users SET balance = balance - $2 WHERE id = $1 RETURNING balance`,
-      [user_id, amount] //
+    // We get the RCP code immediately so the scheduler is ready to go later
+    const recipientCode = await paystackService.createRecipient(
+      recipientName,
+      accountNumber,
+      bankCode
     );
 
-    const result = await client.query(
-      `INSERT INTO payments (amount, scheduled_date, status, receiver_name, receiver_account, description, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, amount, scheduled_date, status, receiver_name, receiver_account, description, user_id, created_at`,
-      [
-        amount,
-        scheduled_date,
-        status,
-        receiver_name,
-        receiver_account,
-        description,
-        user_id,
-      ]
-    );
+    const query = `
+      INSERT INTO payments (
+        user_id, amount, recipient_name, recipient_account, 
+        recipient_bank_code, paystack_recipient_code, scheduled_date, description
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      RETURNING *;
+    `;
 
-    const paymentSchedule = result.rows[0];
+    // const recipientCode = "12345";
+    const values = [
+      user_id,
+      amount,
+      recipientName,
+      accountNumber,
+      bankCode,
+      recipientCode,
+      scheduledDate,
+      description,
+    ];
 
-    //INSERT INTO TRANSACTION TABLE
-    await client.query(
-      `INSERT INTO transactions (user_id, amount, type, category, reference_id) VALUES ($1, $2, $3, $4, $5)`,
-      [user_id, amount, "debit", "payment_deduction", paymentSchedule.id]
-    );
+    const result = await pool.query(query, values);
 
-    await client.query(`COMMIT`);
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      data: {
-        amount: paymentSchedule.amount,
-        scheduled_date: paymentSchedule.scheduled_date,
-        status: paymentSchedule.status,
-        receiver_name: paymentSchedule.receiver_name,
-        receiver_account: paymentSchedule.receiver_account,
-        description: paymentSchedule.description,
-      },
-      message: "Payment Schedule created!",
+      message: "Autopay schedule created successfully!",
+      data: result.rows[0],
     });
   } catch (error) {
-    await client.query(`ROLLBACK`);
-
     res.status(500);
     throw new Error(error.message);
-  } finally {
-    client.release();
   }
 };
 
