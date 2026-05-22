@@ -3,7 +3,7 @@ import pool from "../config.js/db.js";
 
 const paystackWebhook = async (req, res) => {
   console.log("📌 WEHOOK ACTIVATED: Paystack just pinged the server!");
-
+  // res.status(200).json({ msg: "webhooked" });
   // 1. Verify Signature
   const payload = req.rawBody || JSON.stringify(req.body || {});
   const hash = crypto

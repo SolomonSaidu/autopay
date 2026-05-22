@@ -56,18 +56,15 @@ const validateUsers = (shema) => {
 
 const validateAmount = (req, res, next) => {
   const schema = Joi.object({
+    email: Joi.string().email().lowercase().required().messages({
+      "string.email": "Please enter a valid email",
+      "any.required": "Email is required",
+    }),
     amount: Joi.number().positive().min(100).required().messages({
       "number.min": "Minimum top-up is 100 Naira",
       "number.positive": "Amount must be a positive number",
       "any.required": "Amount cannot be empty",
       "number.base": "Amount must be a number",
-    }),
-    type: Joi.string().required().messages({
-      "string.empty": "Type cannot be empty",
-      "string.base": "Type should be a text",
-    }),
-    category: Joi.string().required().messages({
-      "string.empty": "Category cannot be empty",
     }),
   });
 
