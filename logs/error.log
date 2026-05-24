@@ -1,0 +1,6 @@
+[2026-05-24 11:04:38] [ERROR]: HTTP 500 - POST /api/schedule - Msg: syntax error at or near "FROM" - IP: ::1 syntax error at or near "FROM"
+error: syntax error at or near "FROM"
+    at C:\Users\Solomon TheDev\Desktop\project\backEnd\autopay\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createSchedule (file:///C:/Users/Solomon%20TheDev/Desktop/project/backEnd/autopay/src/controllers/scheduleController.js:32:25)
+---------------------------------------------------

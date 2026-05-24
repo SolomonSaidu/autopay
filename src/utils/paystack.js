@@ -41,14 +41,30 @@ export const initPayment = async (email, amount) => {
 export const paystackService = {
   // Step 1: Create a Recipient (The Handshake)
   createRecipient: async (name, accountNumber, bankCode) => {
-    const response = await paystack.post("/transferrecipient", {
-      type: "nuban",
-      name,
-      account_number: accountNumber,
-      bank_code: bankCode,
-      currency: "NGN",
-    });
-    return response.data.data.recipient_code; // RCP_xxxxxxxx
+    try {
+      const response = await paystack.post("/transferrecipient", {
+        type: "nuban",
+        name,
+        account_number: accountNumber,
+        bank_code: bankCode,
+        currency: "NGN",
+      });
+      return response.data.data.recipient_code;
+    } catch (error) {
+      // --- INSERT THIS TEMPORARY DEBUGGING BLOCK ---
+      if (error.response) {
+        console.error("🔴 PAYSTACK VALIDATION REJECTION:");
+        console.error("Status Code:", error.response.status);
+        console.error(
+          "Response Data:",
+          JSON.stringify(error.response.data, null, 2)
+        );
+      } else {
+        console.error("🔴 NETWORK ERROR:", error.message);
+      }
+      // ----------------------------------------------
+      throw error;
+    }
   },
 
   // Step 2: Initiate the Transfer (The Payout)

@@ -1,54 +1,75 @@
 import pool from "../config.js/db.js";
 import { paystackService } from "../utils/paystack.js";
 
-const createSchedule = async (req, res) => {
+const createSchedule = async (req, res, next) => {
   const user_id = req.users.id;
+
+  // 1. Map the exact snake_case fields coming from the request body
   const {
     amount,
-    recipientName,
-    accountNumber,
-    bankCode,
-    scheduledDate,
+    recipient_name,
+    recipient_account,
+    recipient_bank_code,
+    scheduled_date,
+    frequency,
     description,
   } = req.body;
 
   try {
-    // GET USERS BALANCE
-    const userBalance = await pool.query(
-      `SELECT balance FROM users WHERE id = $1`,
-      [user_id] //
-    );
-
-    if (amount > userBalance.rows[0].balance) {
+    // Fail early if crucial parameters are absent before hitting DB or Paystack
+    if (
+      !amount ||
+      !recipient_name ||
+      !recipient_account ||
+      !recipient_bank_code ||
+      !scheduled_date
+    ) {
       res.status(400);
-      throw new Error("Insufficient funds");
+      throw new Error("Missing required payout scheduling fields.");
     }
 
-    // We get the RCP code immediately so the scheduler is ready to go later
-    const recipientCode = await paystackService.createRecipient(
-      recipientName,
-      accountNumber,
-      bankCode
+    // 2. Verify User wallet balance limits
+    const userBalance = await pool.query(
+      `SELECT balance FROM users WHERE id = $1`,
+      [user_id]
     );
 
+    if (parseFloat(amount) > parseFloat(userBalance.rows[0].balance)) {
+      res.status(400);
+      throw new Error("Insufficient funds"); // 💥 Caught by the local catch block below
+    }
+
+    // 3. Request Paystack recipient registration
+    console.log(
+      `Registering transfer recipient: ${recipient_name} on Paystack`
+    );
+
+    const recipientCode = await paystackService.createRecipient(
+      recipient_name,
+      recipient_account,
+      recipient_bank_code
+    );
+
+    // 4. Added 'frequency' column processing into database insert query
     const query = `
       INSERT INTO payments (
         user_id, amount, recipient_name, recipient_account, 
-        recipient_bank_code, paystack_recipient_code, scheduled_date, description
+        recipient_bank_code, paystack_recipient_code, scheduled_date, 
+        frequency, description
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
       RETURNING *;
     `;
 
-    // const recipientCode = "12345";
     const values = [
       user_id,
       amount,
-      recipientName,
-      accountNumber,
-      bankCode,
+      recipient_name,
+      recipient_account,
+      recipient_bank_code,
       recipientCode,
-      scheduledDate,
+      scheduled_date,
+      frequency || "once", // Defaults to one-time if not provided
       description,
     ];
 
@@ -60,8 +81,12 @@ const createSchedule = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    res.status(500);
-    throw new Error(error.message);
+    // If status wasn't set explicitly to 400 above, default to a 500 error
+    if (res.statusCode === 200) res.status(500);
+
+    // 🔥 THE FIX: Pass the error directly to Express's next() middleware thread!
+    // This immediately exits the controller and invokes your global errorHandler + Winston logger.
+    return next(error);
   }
 };
 
